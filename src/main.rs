@@ -3,7 +3,7 @@ mod parser_data;
 use crate::parser_data::ParserData;
 use clap::Parser;
 use std::fs::{metadata, read_dir};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn main() {
     let parser_data = ParserData::parse();
@@ -13,7 +13,7 @@ fn main() {
         panic!("The path provided does not exist, is not a directory, or is inaccessible.");
     }
 
-    let (directory_count, file_count, total_size) = traverse_entry(
+    let (directory_count, file_count, total_size, biggest_file) = traverse_entry(
         &path,
         parser_data.recursive,
         parser_data.depth,
@@ -23,7 +23,7 @@ fn main() {
     );
 
     println!(
-        "Directory count: {}\nFile count: {}\nTotal size {}: {}",
+        "------------------------------------------------\nDirectory count: {}\nFile count: {}\nTotal size {}: {}",
         directory_count,
         file_count,
         if !parser_data.recursive {
@@ -37,7 +37,18 @@ fn main() {
             total_size.to_string()
         }
     );
+
+    if let Some((file_path, file_size)) = biggest_file {
+        println!("Biggest file: {} | {}",
+                 file_path.display(),
+                 if parser_data.human_unit {
+                     convert_size_to_human_unit(file_size)
+                 } else {
+                     file_size.to_string()
+                 });
+    }
 }
+
 
 fn traverse_entry(
     path: &Path,
@@ -46,7 +57,7 @@ fn traverse_entry(
     human_unit: bool,
     quiet: bool,
     ignore_extension: Option<Vec<String>>,
-) -> (u32, u32, u64) {
+) -> (u32, u32, u64, Option<(PathBuf, u64)>) {
     fn traverse_entry_recursive(
         path: &Path,
         recursive: bool,
@@ -55,14 +66,15 @@ fn traverse_entry(
         human_unit: bool,
         quiet: bool,
         ignore_extension: Option<Vec<String>>,
-    ) -> (u32, u32, u64) {
+        mut biggest_file: Option<(PathBuf, u64)>,
+    ) -> (u32, u32, u64, Option<(PathBuf, u64)>) {
         let mut directory_count = 0;
         let mut file_count = 0;
         let mut total_size = 0;
 
         if let Some(maximum_depth) = depth {
             if current_depth > maximum_depth as u32 {
-                return (directory_count, file_count, total_size);
+                return (directory_count, file_count, total_size, biggest_file);
             }
         }
 
@@ -110,6 +122,14 @@ fn traverse_entry(
 
                             file_count += 1;
                             total_size += size;
+
+                            if let Some((_, biggest_size)) = &biggest_file {
+                                if size > *biggest_size {
+                                    biggest_file = Some((entry_path.clone(), size));
+                                }
+                            } else {
+                                biggest_file = Some((entry_path.clone(), size));
+                            }
                         }
                         Some(file_type) if file_type.is_dir() => {
                             if !quiet {
@@ -125,7 +145,7 @@ fn traverse_entry(
                             directory_count += 1;
 
                             if recursive {
-                                let (sub_dir_count, sub_file_count, sub_total_size) =
+                                let (sub_dir_count, sub_file_count, sub_total_size, sub_biggest_file) =
                                     traverse_entry_recursive(
                                         &entry_path,
                                         recursive,
@@ -134,11 +154,22 @@ fn traverse_entry(
                                         human_unit,
                                         quiet,
                                         ignore_extension.clone(),
+                                        biggest_file.clone(),
                                     );
 
                                 directory_count += sub_dir_count;
                                 file_count += sub_file_count;
                                 total_size += sub_total_size;
+
+                                if let Some((_, biggest_size)) = &biggest_file {
+                                    if let Some((_, sub_biggest_size)) = &sub_biggest_file {
+                                        if sub_biggest_size > biggest_size {
+                                            biggest_file = sub_biggest_file;
+                                        }
+                                    }
+                                } else {
+                                    biggest_file = sub_biggest_file;
+                                }
                             }
                         }
                         _ => {
@@ -158,7 +189,7 @@ fn traverse_entry(
             }
         }
 
-        (directory_count, file_count, total_size)
+        (directory_count, file_count, total_size, biggest_file)
     }
 
     traverse_entry_recursive(
@@ -169,6 +200,7 @@ fn traverse_entry(
         human_unit,
         quiet,
         ignore_extension,
+        None,
     )
 }
 
