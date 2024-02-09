@@ -20,6 +20,7 @@ fn main() {
         parser_data.human_unit,
         parser_data.quiet,
         parser_data.ignore_extension,
+        parser_data.only_extension,
     );
 
     println!(
@@ -57,6 +58,7 @@ fn traverse_entry(
     human_unit: bool,
     quiet: bool,
     ignore_extension: Option<Vec<String>>,
+    only_extension: Option<Vec<String>>,
 ) -> (u32, u32, u64, Option<(PathBuf, u64)>) {
     fn traverse_entry_recursive(
         path: &Path,
@@ -67,6 +69,7 @@ fn traverse_entry(
         quiet: bool,
         ignore_extension: Option<Vec<String>>,
         mut biggest_file: Option<(PathBuf, u64)>,
+        only_extension: Option<Vec<String>>,
     ) -> (u32, u32, u64, Option<(PathBuf, u64)>) {
         let mut directory_count = 0;
         let mut file_count = 0;
@@ -89,7 +92,18 @@ fn traverse_entry(
                     match entry_type {
                         Some(file_type) if file_type.is_file() => {
                             let extension = entry_path.extension();
-                            if let Some(extension) = extension {
+
+                            if (only_extension) != None {
+                                if let Some(extension) = extension {
+                                    if !only_extension.as_ref().unwrap().contains(
+                                        &extension.to_string_lossy().to_lowercase(),
+                                    ) {
+                                        continue;
+                                    }
+                                } else {
+                                    continue;
+                                }
+                            } else if let Some(extension) = extension {
                                 if let Some(extension_to_ignore) = &ignore_extension {
                                     if extension_to_ignore.contains(
                                         &extension.to_string_lossy().to_lowercase(),
@@ -155,6 +169,7 @@ fn traverse_entry(
                                         quiet,
                                         ignore_extension.clone(),
                                         biggest_file.clone(),
+                                        only_extension.clone(),
                                     );
 
                                 directory_count += sub_dir_count;
@@ -201,6 +216,7 @@ fn traverse_entry(
         quiet,
         ignore_extension,
         None,
+        only_extension,
     )
 }
 

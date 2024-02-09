@@ -20,6 +20,10 @@ pub(crate) struct ParserData {
     #[arg(short, long)]
     pub(crate) ignore_extension: Option<Vec<String>>,
 
+    /// If set, the program will include only this file extension. It will ignore any other file extension.
+    #[arg(short, long)]
+    pub(crate) only_extension: Option<Vec<String>>,
+
     /// If set, the program will print the size in human-readable format.
     #[arg(long, default_value = "false")]
     pub(crate) human_unit: bool,
