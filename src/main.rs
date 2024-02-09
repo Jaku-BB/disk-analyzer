@@ -68,83 +68,80 @@ fn traverse_entry(
 
         match read_dir(path) {
             Ok(content) => {
-                for entry in content {
-                    match entry {
-                        Ok(entry) => {
-                            let entry_path = entry.path();
-                            let entry_data = metadata(&entry_path);
+                let entries: Vec<_> = content
+                    .filter_map(Result::ok)
+                    .map(|entry| (entry.path(), entry.file_type().ok()))
+                    .collect();
 
-                            match entry_data {
-                                Ok(data) => {
-                                    if data.is_file() {
-                                        let extension = entry_path.extension();
-
-                                        if let Some(extension) = extension {
-                                            if let Some(extension_to_ignore) = &ignore_extension {
-                                                if extension_to_ignore.contains(
-                                                    &extension.to_string_lossy().to_lowercase(),
-                                                ) {
-                                                    continue;
-                                                }
-                                            }
-                                        }
-
-                                        let size = data.len();
-
-                                        if !quiet {
-                                            print_entry_data(
-                                                current_depth as usize,
-                                                &entry_path.file_name().unwrap().to_string_lossy(),
-                                                true,
-                                                size,
-                                                human_unit,
-                                            );
-                                        }
-
-                                        file_count += 1;
-                                        total_size += size;
-
+                for (entry_path, entry_type) in entries {
+                    match entry_type {
+                        Some(file_type) if file_type.is_file() => {
+                            let extension = entry_path.extension();
+                            if let Some(extension) = extension {
+                                if let Some(extension_to_ignore) = &ignore_extension {
+                                    if extension_to_ignore.contains(
+                                        &extension.to_string_lossy().to_lowercase(),
+                                    ) {
                                         continue;
                                     }
-
-                                    if !quiet {
-                                        print_entry_data(
-                                            current_depth as usize,
-                                            &entry_path.file_name().unwrap().to_string_lossy(),
-                                            false,
-                                            0,
-                                            human_unit,
-                                        );
-                                    }
-
-                                    directory_count += 1;
-
-                                    if recursive {
-                                        let (sub_dir_count, sub_file_count, sub_total_size) =
-                                            traverse_entry_recursive(
-                                                &entry_path,
-                                                recursive,
-                                                depth,
-                                                current_depth + 1,
-                                                human_unit,
-                                                quiet,
-                                                ignore_extension.clone(),
-                                            );
-
-                                        directory_count += sub_dir_count;
-                                        file_count += sub_file_count;
-                                        total_size += sub_total_size;
-                                    }
                                 }
-                                Err(_error) => {
+                            }
+
+                            let size = match metadata(&entry_path) {
+                                Ok(data) => data.len(),
+                                Err(_) => {
                                     println!(
                                         "{}\nCould not get entry data, is it accessible? Skipping...",
                                         entry_path.display()
                                     );
+                                    continue;
                                 }
+                            };
+
+                            if !quiet {
+                                print_entry_data(
+                                    current_depth as usize,
+                                    &entry_path.file_name().unwrap().to_string_lossy(),
+                                    true,
+                                    size,
+                                    human_unit,
+                                );
+                            }
+
+                            file_count += 1;
+                            total_size += size;
+                        }
+                        Some(file_type) if file_type.is_dir() => {
+                            if !quiet {
+                                print_entry_data(
+                                    current_depth as usize,
+                                    &entry_path.file_name().unwrap().to_string_lossy(),
+                                    false,
+                                    0,
+                                    human_unit,
+                                );
+                            }
+
+                            directory_count += 1;
+
+                            if recursive {
+                                let (sub_dir_count, sub_file_count, sub_total_size) =
+                                    traverse_entry_recursive(
+                                        &entry_path,
+                                        recursive,
+                                        depth,
+                                        current_depth + 1,
+                                        human_unit,
+                                        quiet,
+                                        ignore_extension.clone(),
+                                    );
+
+                                directory_count += sub_dir_count;
+                                file_count += sub_file_count;
+                                total_size += sub_total_size;
                             }
                         }
-                        Err(_error) => {
+                        _ => {
                             println!(
                                 "{}\nCould not read entry, is it accessible? Skipping...",
                                 path.display()
@@ -153,7 +150,7 @@ fn traverse_entry(
                     }
                 }
             }
-            Err(_error) => {
+            Err(_) => {
                 println!(
                     "{}\nCould not read directory content, is it accessible? Skipping...",
                     path.display()
