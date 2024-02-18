@@ -23,16 +23,27 @@ fn main() {
         parser_data.only_extension,
     );
 
-    println!(
-        "------------------------------------------------\nDirectory count: {}\nFile count: {}\nTotal size {}: {}",
+    print_summary(
         directory_count,
         file_count,
-        if !parser_data.recursive {
-            "(only top level, use --recursive to include any directory within the path)"
-        } else {
-            ""
-        },
-        if parser_data.human_unit {
+        total_size,
+        parser_data.human_unit,
+        biggest_file,
+    );
+}
+
+fn print_summary(
+    directory_count: u32,
+    file_count: u32,
+    total_size: u64,
+    human_unit: bool,
+    biggest_file: Option<(PathBuf, u64)>,
+) {
+    println!(
+        "------------------------------------------------\nDirectory count: {}\nFile count: {}\nTotal size: {}",
+        directory_count,
+        file_count,
+        if human_unit {
             convert_size_to_human_unit(total_size)
         } else {
             total_size.to_string()
@@ -40,16 +51,17 @@ fn main() {
     );
 
     if let Some((file_path, file_size)) = biggest_file {
-        println!("Biggest file: {} | {}",
-                 file_path.display(),
-                 if parser_data.human_unit {
-                     convert_size_to_human_unit(file_size)
-                 } else {
-                     file_size.to_string()
-                 });
+        println!(
+            "Biggest file: {} | {}",
+            file_path.display(),
+            if human_unit {
+                convert_size_to_human_unit(file_size)
+            } else {
+                file_size.to_string()
+            }
+        );
     }
 }
-
 
 fn traverse_entry(
     path: &Path,
