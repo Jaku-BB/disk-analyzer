@@ -21,9 +21,12 @@ cargo build --release
 ./target/release/disk-analyzer <flagi> <ścieżka do katalogu>
 ```
 
-Opis dostępnych flag można uzyskać wykonując polecenie:
+## Dostępne flagi
 
-```bash
-./target/release/disk-analyzer --help
-```
-
+- `-r`, `--recursive`: Jeśli ustawione, program będzie uwzględniał każdy katalog w ścieżce.
+- `-d`, `--depth [GŁĘBOKOŚĆ]`: Użyj tej opcji, aby ograniczyć głębokość przeszukiwania katalogów. Domyślnie: 999.
+- `-q`, `--quiet`: Jeśli ustawione, program będzie wyświetlał tylko podsumowanie informacji.
+- `-i`, `--ignore-extension [ROZSZERZENIE]`: Jeśli ustawione, program będzie ignorował podane rozszerzenia plików.
+- `-o`, `--only-extension [ROZSZERZENIE]`: Jeśli ustawione, program będzie uwzględniał tylko podane rozszerzenia plików,
+  ignorując wszystkie inne.
+- `--human-unit`: Jeśli ustawione, program będzie wyświetlał rozmiar w formacie czytelnym dla człowieka.
